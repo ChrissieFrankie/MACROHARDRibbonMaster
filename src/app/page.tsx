@@ -7,13 +7,13 @@ const anton = Anton({
 
 export default function Home() {
   return (
-    <main className="flex flex-col items-center justify-center min-h-screen bg-gray-50">
+    <main className="flex flex-col items-center justify-center min-h-screen bg-black-50">
       {/* Logo */}
-      <h1 className={`text-5xl text-blue-600 ${anton.className}`}>MACROHARD</h1>
+      <h1 className={`text-5xl text-white-600 ${anton.className}`}>MACROHARD</h1>
 
       {/* Button */}
       <button className="px-8 py-4 bg-green-600 text-white font-bold rounded-lg hover:bg-green-700 transition">
-        Excel
+        EXCEL
       </button>
     </main>
   );
