@@ -24,6 +24,7 @@ export default function Workbook() {
   const [selectedTab, setSelectedTab] = useState('Home');
   const [groups, setGroups] = useState<RibbonGroup[]>([]);
   const [editingComponentId, setEditingComponentId] = useState<string | null>(null);
+  const [editingSubcomponentId, setEditingSubcomponentId] = useState<string | null>(null);
   const [editValue, setEditValue] = useState('');
   const [openDropdownId, setOpenDropdownId] = useState<string | null>(null);
 
@@ -264,7 +265,56 @@ export default function Workbook() {
                               key={subcomp.id}
                               className="px-2 py-1 bg-gray-600 hover:bg-gray-500 text-white text-xs rounded cursor-pointer"
                             >
-                              {subcomp.label}
+                              {editingSubcomponentId === subcomp.id ? (
+                                <input
+                                  type="text"
+                                  value={editValue}
+                                  onChange={(e) => setEditValue(e.target.value)}
+                                  onBlur={() => {
+                                    if (editValue.trim()) {
+                                      const updatedGroups = [...groups];
+                                      const currentGroup = updatedGroups[groupIndex];
+                                      updatedGroups[groupIndex] = {
+                                        ...currentGroup,
+                                        components: currentGroup.components.map(comp =>
+                                          comp.id === component.id
+                                            ? {
+                                                ...comp,
+                                                subcomponents: comp.subcomponents?.map(sub =>
+                                                  sub.id === subcomp.id ? { ...sub, label: editValue.trim() } : sub
+                                                )
+                                              }
+                                            : comp
+                                        )
+                                      };
+                                      setGroups(updatedGroups);
+                                    }
+                                    setEditingSubcomponentId(null);
+                                    setEditValue('');
+                                  }}
+                                  onKeyDown={(e) => {
+                                    if (e.key === 'Enter') {
+                                      e.currentTarget.blur();
+                                    } else if (e.key === 'Escape') {
+                                      setEditingSubcomponentId(null);
+                                      setEditValue('');
+                                    }
+                                  }}
+                                  autoFocus
+                                  className="bg-gray-500 text-white text-xs rounded px-1 py-0.5 w-full outline-none border border-gray-400"
+                                  onClick={(e) => e.stopPropagation()}
+                                />
+                              ) : (
+                                <span
+                                  onDoubleClick={(e) => {
+                                    e.stopPropagation();
+                                    setEditingSubcomponentId(subcomp.id);
+                                    setEditValue(subcomp.label);
+                                  }}
+                                >
+                                  {subcomp.label}
+                                </span>
+                              )}
                             </div>
                           ))}
                           <button
