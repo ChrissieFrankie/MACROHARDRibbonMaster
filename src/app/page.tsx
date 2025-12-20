@@ -1,4 +1,8 @@
+'use client';
+
+import { useState } from 'react';
 import { Anton } from 'next/font/google';
+import Workbook from '@/components/Workbook/workbook'; // Adjust path if needed
 
 const anton = Anton({
   weight: '400',
@@ -6,13 +10,20 @@ const anton = Anton({
 });
 
 export default function Home() {
-  return (
-    <main className="flex flex-col items-center justify-center min-h-screen bg-black-50">
-      {/* Logo */}
-      <h1 className={`text-5xl text-white-600 ${anton.className}`}>MACROHARD</h1>
+  const [showWorkbook, setShowWorkbook] = useState(false);
 
-      {/* Button */}
-      <button className="px-8 py-4 bg-green-600 text-white font-bold rounded-lg hover:bg-green-700 transition">
+  if (showWorkbook) {
+    return <Workbook />;
+  }
+
+  return (
+    <main className="flex flex-col items-center justify-center min-h-screen bg-gray-900">
+      <h1 className={`text-7xl text-white mb-16 ${anton.className}`}>MACROHARD</h1>
+      
+      <button
+        onClick={() => setShowWorkbook(true)}
+        className="px-16 py-8 bg-green-600 text-white text-4xl font-bold rounded-xl hover:bg-green-700 transition shadow-2xl"
+      >
         EXCEL
       </button>
     </main>
