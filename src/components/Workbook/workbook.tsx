@@ -78,7 +78,7 @@ export default function Workbook() {
       {/* Simple Ribbon Placeholder – expand this into your custom MACROHARD Ribbon later */}
       <div className="bg-black border-b-2 border-gray-500 px-6 py-3 flex items-center gap-8">
       <span className="font-bold text-lg text-white">File</span>
-        <span className="font-bold text-lg text-white">Home</span>
+        <span className="font-bold text-lg text-white border-b-2 border-white pb-1">Home</span>
         <span className="font-bold text-lg text-white">Insert</span>
         <span className="font-bold text-lg text-white">Formulas</span>
         {/* Add macro buttons here */}
