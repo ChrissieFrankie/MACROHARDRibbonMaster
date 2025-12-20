@@ -2,9 +2,15 @@
 
 import { useEffect, useRef, useState } from 'react';
 
+interface RibbonSubcomponent {
+  id: string;
+  label: string;
+}
+
 interface RibbonComponent {
   id: string;
   label: string;
+  subcomponents?: RibbonSubcomponent[];
 }
 
 interface RibbonGroup {
@@ -19,6 +25,7 @@ export default function Workbook() {
   const [groups, setGroups] = useState<RibbonGroup[]>([]);
   const [editingComponentId, setEditingComponentId] = useState<string | null>(null);
   const [editValue, setEditValue] = useState('');
+  const [openDropdownId, setOpenDropdownId] = useState<string | null>(null);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -88,6 +95,23 @@ export default function Workbook() {
     }
   }, []);
 
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as HTMLElement;
+      if (!target.closest('.dropdown-container')) {
+        setOpenDropdownId(null);
+      }
+    };
+
+    if (openDropdownId) {
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => {
+        document.removeEventListener('mousedown', handleClickOutside);
+      };
+    }
+  }, [openDropdownId]);
+
   return (
     <div className="min-h-screen bg-gray-200 flex flex-col overflow-hidden">
       {/* Simple Ribbon Placeholder – expand this into your custom MACROHARD Ribbon later */}
@@ -147,77 +171,129 @@ export default function Workbook() {
                 </div>
                 <div className="flex flex-col gap-2">
                   {group.components.map((component, compIndex) => (
-                    <div
-                      key={component.id}
-                      className="px-3 py-2 bg-gray-600 hover:bg-gray-500 text-white text-sm rounded cursor-pointer transition-colors flex items-center justify-between"
-                    >
-                      {editingComponentId === component.id ? (
-                        <input
-                          type="text"
-                          value={editValue}
-                          onChange={(e) => setEditValue(e.target.value)}
-                          onBlur={() => {
-                            if (editValue.trim()) {
+                    <div key={component.id} className="relative dropdown-container">
+                      <div
+                        className="px-3 py-2 bg-gray-600 hover:bg-gray-500 text-white text-sm rounded cursor-pointer transition-colors flex items-center justify-between"
+                      >
+                        {editingComponentId === component.id ? (
+                          <input
+                            type="text"
+                            value={editValue}
+                            onChange={(e) => setEditValue(e.target.value)}
+                            onBlur={() => {
+                              if (editValue.trim()) {
+                                const updatedGroups = [...groups];
+                                const currentGroup = updatedGroups[groupIndex];
+                                updatedGroups[groupIndex] = {
+                                  ...currentGroup,
+                                  components: currentGroup.components.map(comp =>
+                                    comp.id === component.id ? { ...comp, label: editValue.trim() } : comp
+                                  )
+                                };
+                                setGroups(updatedGroups);
+                              }
+                              setEditingComponentId(null);
+                              setEditValue('');
+                            }}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') {
+                                e.currentTarget.blur();
+                              } else if (e.key === 'Escape') {
+                                setEditingComponentId(null);
+                                setEditValue('');
+                              }
+                            }}
+                            autoFocus
+                            className="bg-gray-500 text-white text-sm rounded px-2 py-1 flex-1 outline-none border border-gray-400"
+                            onClick={(e) => e.stopPropagation()}
+                          />
+                        ) : (
+                          <span
+                            onDoubleClick={(e) => {
+                              e.stopPropagation();
+                              setEditingComponentId(component.id);
+                              setEditValue(component.label);
+                            }}
+                            className="flex-1"
+                          >
+                            {component.label}
+                          </span>
+                        )}
+                        <div className="flex items-center gap-1">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setOpenDropdownId(openDropdownId === component.id ? null : component.id);
+                            }}
+                            className={`opacity-50 hover:opacity-100 text-white text-lg transition-all ${
+                              openDropdownId === component.id ? 'rotate-90' : ''
+                            }`}
+                            title="Toggle Dropdown"
+                          >
+                            ▶
+                          </button>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
                               const updatedGroups = [...groups];
                               const currentGroup = updatedGroups[groupIndex];
                               updatedGroups[groupIndex] = {
                                 ...currentGroup,
+                                components: [
+                                  ...currentGroup.components.slice(0, compIndex + 1),
+                                  {
+                                    id: `component-${Date.now()}`,
+                                    label: `Component ${currentGroup.components.length + 1}`
+                                  },
+                                  ...currentGroup.components.slice(compIndex + 1)
+                                ]
+                              };
+                              setGroups(updatedGroups);
+                            }}
+                            className="opacity-50 hover:opacity-100 text-white text-lg transition-opacity ml-2"
+                            title="Add Component"
+                          >
+                            ↓
+                          </button>
+                        </div>
+                      </div>
+                      {openDropdownId === component.id && (
+                        <div className="mt-1 ml-4 border-l-2 border-gray-600 pl-3 flex flex-col gap-1">
+                          {component.subcomponents?.map((subcomp) => (
+                            <div
+                              key={subcomp.id}
+                              className="px-2 py-1 bg-gray-600 hover:bg-gray-500 text-white text-xs rounded cursor-pointer"
+                            >
+                              {subcomp.label}
+                            </div>
+                          ))}
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              const updatedGroups = [...groups];
+                              const currentGroup = updatedGroups[groupIndex];
+                              const currentComponent = currentGroup.components[compIndex];
+                              const newSubcomponent: RibbonSubcomponent = {
+                                id: `subcomponent-${Date.now()}`,
+                                label: `Subcomponent ${(currentComponent.subcomponents?.length || 0) + 1}`
+                              };
+                              updatedGroups[groupIndex] = {
+                                ...currentGroup,
                                 components: currentGroup.components.map(comp =>
-                                  comp.id === component.id ? { ...comp, label: editValue.trim() } : comp
+                                  comp.id === component.id
+                                    ? { ...comp, subcomponents: [...(comp.subcomponents || []), newSubcomponent] }
+                                    : comp
                                 )
                               };
                               setGroups(updatedGroups);
-                            }
-                            setEditingComponentId(null);
-                            setEditValue('');
-                          }}
-                          onKeyDown={(e) => {
-                            if (e.key === 'Enter') {
-                              e.currentTarget.blur();
-                            } else if (e.key === 'Escape') {
-                              setEditingComponentId(null);
-                              setEditValue('');
-                            }
-                          }}
-                          autoFocus
-                          className="bg-gray-500 text-white text-sm rounded px-2 py-1 flex-1 outline-none border border-gray-400"
-                          onClick={(e) => e.stopPropagation()}
-                        />
-                      ) : (
-                        <span
-                          onDoubleClick={(e) => {
-                            e.stopPropagation();
-                            setEditingComponentId(component.id);
-                            setEditValue(component.label);
-                          }}
-                          className="flex-1"
-                        >
-                          {component.label}
-                        </span>
+                            }}
+                            className="px-2 py-1 bg-gray-700 hover:bg-gray-600 text-white text-xs rounded cursor-pointer opacity-50 hover:opacity-100 transition-opacity flex items-center justify-center"
+                            title="Add Subcomponent"
+                          >
+                            +
+                          </button>
+                        </div>
                       )}
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          const updatedGroups = [...groups];
-                          const currentGroup = updatedGroups[groupIndex];
-                          updatedGroups[groupIndex] = {
-                            ...currentGroup,
-                            components: [
-                              ...currentGroup.components.slice(0, compIndex + 1),
-                              {
-                                id: `component-${Date.now()}`,
-                                label: `Component ${currentGroup.components.length + 1}`
-                              },
-                              ...currentGroup.components.slice(compIndex + 1)
-                            ]
-                          };
-                          setGroups(updatedGroups);
-                        }}
-                        className="opacity-50 hover:opacity-100 text-white text-lg transition-opacity ml-2"
-                        title="Add Component"
-                      >
-                        ↓
-                      </button>
                     </div>
                   ))}
                   {group.components.length === 0 && (
