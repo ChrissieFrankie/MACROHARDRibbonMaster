@@ -1,9 +1,10 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 export default function Workbook() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const [selectedTab, setSelectedTab] = useState('Home');
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -77,10 +78,30 @@ export default function Workbook() {
     <div className="min-h-screen bg-gray-200 flex flex-col overflow-hidden">
       {/* Simple Ribbon Placeholder – expand this into your custom MACROHARD Ribbon later */}
       <div className="bg-black border-b-2 border-gray-500 px-6 py-3 flex items-center gap-8">
-      <span className="font-bold text-lg text-white">File</span>
-        <span className="font-bold text-lg text-white border-b-2 border-white pb-1">Home</span>
-        <span className="font-bold text-lg text-white">Insert</span>
-        <span className="font-bold text-lg text-white">Formulas</span>
+      <span 
+        className={`font-bold text-lg text-white cursor-pointer pb-1 ${selectedTab === 'File' ? 'border-b-2 border-green-500' : ''}`}
+        onClick={() => setSelectedTab('File')}
+      >
+        File
+      </span>
+        <span 
+          className={`font-bold text-lg text-white cursor-pointer pb-1 ${selectedTab === 'Home' ? 'border-b-2 border-green-500' : ''}`}
+          onClick={() => setSelectedTab('Home')}
+        >
+          Home
+        </span>
+        <span 
+          className={`font-bold text-lg text-white cursor-pointer pb-1 ${selectedTab === 'Insert' ? 'border-b-2 border-green-500' : ''}`}
+          onClick={() => setSelectedTab('Insert')}
+        >
+          Insert
+        </span>
+        <span 
+          className={`font-bold text-lg text-white cursor-pointer pb-1 ${selectedTab === 'Formulas' ? 'border-b-2 border-green-500' : ''}`}
+          onClick={() => setSelectedTab('Formulas')}
+        >
+          Formulas
+        </span>
         {/* Add macro buttons here */}
       </div>
 
