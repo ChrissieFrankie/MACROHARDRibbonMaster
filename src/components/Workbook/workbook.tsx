@@ -105,6 +105,13 @@ export default function Workbook() {
         {/* Add macro buttons here */}
       </div>
 
+      {/* Ribbon panel - shown when Home is selected */}
+      {selectedTab === 'Home' && (
+        <div className="bg-[#292929] h-32 border-b-2 border-[#292929]">
+          {/* Empty ribbon panel */}
+        </div>
+      )}
+
       {/* The blank spreadsheet grid */}
       <div className="flex-1 overflow-auto bg-white">
         <canvas ref={canvasRef} className="shadow-lg" />
