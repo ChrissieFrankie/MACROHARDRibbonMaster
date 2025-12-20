@@ -55,7 +55,7 @@ export default function Workbook() {
     ctx.fillRect(0, 0, headerWidth, canvas.height); // Row numbers column
 
     // Column letters (A, B, ..., Z)
-    ctx.fillStyle = '#333333';
+    ctx.fillStyle = '#000000';
     ctx.font = 'bold 12px Arial';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
@@ -76,11 +76,11 @@ export default function Workbook() {
   return (
     <div className="min-h-screen bg-gray-200 flex flex-col overflow-hidden">
       {/* Simple Ribbon Placeholder – expand this into your custom MACROHARD Ribbon later */}
-      <div className="bg-gray-300 border-b-2 border-gray-500 px-6 py-3 flex items-center gap-8">
-      <span className="font-bold text-lg text-gray-800">File</span>
-        <span className="font-bold text-lg text-gray-800">Home</span>
-        <span className="font-bold text-lg text-gray-800">Insert</span>
-        <span className="font-bold text-lg text-gray-800">Formulas</span>
+      <div className="bg-black border-b-2 border-gray-500 px-6 py-3 flex items-center gap-8">
+      <span className="font-bold text-lg text-white">File</span>
+        <span className="font-bold text-lg text-white">Home</span>
+        <span className="font-bold text-lg text-white">Insert</span>
+        <span className="font-bold text-lg text-white">Formulas</span>
         {/* Add macro buttons here */}
       </div>
 
