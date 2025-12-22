@@ -442,18 +442,16 @@ export default function Workbook() {
           )}
           {contextMenu.groupIndex !== undefined && (
             <>
-              <button
-                onClick={() => {
-                  if (contextMenu.componentIndex !== undefined) {
-                    createNewComponent(contextMenu.groupIndex!, contextMenu.componentIndex);
-                  } else {
+              {contextMenu.componentIndex === undefined && (
+                <button
+                  onClick={() => {
                     createNewComponent(contextMenu.groupIndex!);
-                  }
-                }}
-                className={`w-full text-left px-4 py-2 text-white text-sm hover:bg-gray-600 transition-colors ${contextMenu.componentIndex !== undefined ? 'border-t border-gray-600' : ''}`}
-              >
-                Create New Component
-              </button>
+                  }}
+                  className="w-full text-left px-4 py-2 text-white text-sm hover:bg-gray-600 transition-colors"
+                >
+                  Create New Component
+                </button>
+              )}
               {contextMenu.componentIndex !== undefined && (
                 <>
                   {!groups[contextMenu.groupIndex]?.components[contextMenu.componentIndex]?.subcomponents ? (
