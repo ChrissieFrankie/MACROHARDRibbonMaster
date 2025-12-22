@@ -98,7 +98,7 @@ export default function Workbook() {
         // Assign to column 0 by default
         const newComponent = {
           id: `component-${Date.now()}`,
-          label: `Component ${g.components.length + 1}`,
+          label: `${g.components.length + 1}`,
           column: 0,
         };
         
@@ -267,3 +267,4 @@ export default function Workbook() {
     </div>
   );
 }
+
