@@ -11,12 +11,11 @@ interface ContextMenuProps {
   onDestroyDropdown: (groupIndex: number, componentIndex: number) => void;
   onAddColumn: (groupIndex: number) => void;
   onRemoveColumn: (groupIndex: number) => void;
-  onMoveLeft: (groupIndex: number, componentIndex: number) => void;
-  onMoveRight: (groupIndex: number, componentIndex: number) => void;
+  onMoveToPrevColumn: (groupIndex: number, componentIndex: number) => void;
+  onMoveToNextColumn: (groupIndex: number, componentIndex: number) => void;
   onClose: () => void;
 }
 
-// ← THIS IS THE FIX: wrap with forwardRef
 const ContextMenu = forwardRef<HTMLDivElement, ContextMenuProps>((
   {
     position,
@@ -27,11 +26,11 @@ const ContextMenu = forwardRef<HTMLDivElement, ContextMenuProps>((
     onDestroyDropdown,
     onAddColumn,
     onRemoveColumn,
-    onMoveLeft,
-    onMoveRight,
+    onMoveToPrevColumn,
+    onMoveToNextColumn,
     onClose,
   },
-  ref  // ← receive the ref here
+  ref
 ) => {
   if (!position) return null;
 
@@ -44,12 +43,11 @@ const ContextMenu = forwardRef<HTMLDivElement, ContextMenuProps>((
 
   return (
     <div
-      ref={ref}  // ← apply the ref to the div
-      className="context-menu fixed bg-gray-700 border border-gray-600 rounded shadow-lg z-50 min-w-[180px] py-1"
+      ref={ref}
+      className="fixed bg-gray-700 border border-gray-600 rounded shadow-lg z-50 min-w-[180px] py-1"
       style={{ left: `${x}px`, top: `${y}px` }}
       onClick={(e) => e.stopPropagation()}
     >
-      {/* Right-click on empty ribbon area */}
       {groupIndex === undefined && componentIndex === undefined && (
         <button
           onClick={() => handleClick(() => onCreateGroup())}
@@ -59,7 +57,6 @@ const ContextMenu = forwardRef<HTMLDivElement, ContextMenuProps>((
         </button>
       )}
 
-      {/* Right-click on a Group */}
       {groupIndex !== undefined && componentIndex === undefined && (
         <>
           <button
@@ -89,7 +86,6 @@ const ContextMenu = forwardRef<HTMLDivElement, ContextMenuProps>((
         </>
       )}
 
-      {/* Right-click on a Component */}
       {groupIndex !== undefined && componentIndex !== undefined && (
         <>
           {groups[groupIndex]?.components[componentIndex]?.subcomponents ? (
@@ -108,52 +104,50 @@ const ContextMenu = forwardRef<HTMLDivElement, ContextMenuProps>((
             </button>
           )}
 
-          {(groups[groupIndex]?.columns || 1) > 1 && groups[groupIndex]?.components.length > 1 && (
-            <>
-              <div className="border-t border-gray-600 my-1" />
-              {(() => {
-                const group = groups[groupIndex!];
-                const columns = group.columns || 1;
-                const col = componentIndex! % columns;
-                const currentRow = Math.floor(componentIndex! / columns);
-                const nextPos = componentIndex! + 1;
-                const canMoveRight =
-                  col < columns - 1 &&
-                  nextPos < group.components.length &&
-                  Math.floor(nextPos / columns) === currentRow;
+          {/* Move to Previous / Next Column */}
+          {(() => {
+            const group = groups[groupIndex!];
+            const columns = group.columns || 1;
+            if (columns <= 1) return null;
 
-                const canMoveLeft = col > 0;
+            const component = group.components[componentIndex!];
+            
+            // Initialize column if it doesn't exist
+            const currentCol = component.column ?? (componentIndex! % columns);
 
-                return (
-                  <>
-                    {canMoveLeft && (
-                      <button
-                        onClick={() => handleClick(() => onMoveLeft(groupIndex!, componentIndex!))}
-                        className="w-full text-left px-4 py-2 text-white text-sm hover:bg-gray-600 transition-colors"
-                      >
-                        Move Left
-                      </button>
-                    )}
-                    {canMoveRight && (
-                      <button
-                        onClick={() => handleClick(() => onMoveRight(groupIndex!, componentIndex!))}
-                        className="w-full text-left px-4 py-2 text-white text-sm hover:bg-gray-600 transition-colors"
-                      >
-                        Move Right
-                      </button>
-                    )}
-                  </>
-                );
-              })()}
-            </>
-          )}
+            const canMovePrev = currentCol > 0;
+            const canMoveNext = currentCol < columns - 1;
+
+            if (!canMovePrev && !canMoveNext) return null;
+
+            return (
+              <>
+                <div className="border-t border-gray-600 my-1" />
+                {canMovePrev && (
+                  <button
+                    onClick={() => handleClick(() => onMoveToPrevColumn(groupIndex!, componentIndex!))}
+                    className="w-full text-left px-4 py-2 text-white text-sm hover:bg-gray-600 transition-colors"
+                  >
+                    Move to Previous Column
+                  </button>
+                )}
+                {canMoveNext && (
+                  <button
+                    onClick={() => handleClick(() => onMoveToNextColumn(groupIndex!, componentIndex!))}
+                    className="w-full text-left px-4 py-2 text-white text-sm hover:bg-gray-600 transition-colors"
+                  >
+                    Move to Next Column
+                  </button>
+                )}
+              </>
+            );
+          })()}
         </>
       )}
     </div>
   );
 });
 
-// Optional but recommended for debugging
 ContextMenu.displayName = "ContextMenu";
 
 export default ContextMenu;

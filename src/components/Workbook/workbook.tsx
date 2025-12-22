@@ -7,27 +7,48 @@ import RibbonTabs from "./RibbonTabs";
 import RibbonGroup from "./RibbonGroup";
 import ContextMenu from "./ContextMenu";
 import { RibbonGroup as GroupType, ContextMenuPosition } from "./types";
+import { migrateGroupsToColumnTracking } from "./migrateGroups";
 
 export default function Workbook() {
   const [selectedTab, setSelectedTab] = useState("Home");
   const [groups, setGroups] = useState<GroupType[]>([]);
   const [openDropdownId, setOpenDropdownId] = useState<string | null>(null);
-  const [contextMenu, setContextMenu] = useState<ContextMenuPosition | null>(
-    null
-  );
+  const [contextMenu, setContextMenu] = useState<ContextMenuPosition | null>(null);
 
-  const [editingComponentId, setEditingComponentId] = useState<string | null>(
-    null
-  );
-  const [editingSubcomponentId, setEditingSubcomponentId] = useState<
-    string | null
-  >(null);
+  const [editingComponentId, setEditingComponentId] = useState<string | null>(null);
+  const [editingSubcomponentId, setEditingSubcomponentId] = useState<string | null>(null);
   const [editValue, setEditValue] = useState<string>("");
 
-  // Ref for the context menu element
   const contextMenuRef = useRef<HTMLDivElement>(null);
+  const migrated = useRef(false);
 
-  // Close context menu when clicking outside
+  // One-time migration: assign column property to components that don't have it
+  useEffect(() => {
+    if (migrated.current) return;
+    
+    setGroups(prev => {
+      const needsMigration = prev.some(g => 
+        g.components.some(c => c.column === undefined)
+      );
+      
+      if (needsMigration) {
+        migrated.current = true;
+        return prev.map(group => ({
+          ...group,
+          components: group.components.map((c, idx) => {
+            if (c.column === undefined) {
+              const columns = group.columns || 1;
+              return { ...c, column: idx % columns };
+            }
+            return c;
+          })
+        }));
+      }
+      
+      return prev;
+    });
+  }, []);
+
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (
@@ -40,9 +61,7 @@ export default function Workbook() {
 
     if (contextMenu) {
       document.addEventListener("mousedown", handleClickOutside);
-      return () => {
-        document.removeEventListener("mousedown", handleClickOutside);
-      };
+      return () => document.removeEventListener("mousedown", handleClickOutside);
     }
   }, [contextMenu]);
 
@@ -72,17 +91,19 @@ export default function Workbook() {
   };
 
   const createNewComponent = (groupIndex: number) => {
-    const newComponent = {
-      id: `component-${Date.now()}`,
-      label: `Component ${groups[groupIndex].components.length + 1}`,
-    };
-
     setGroups((prev) =>
-      prev.map((g, i) =>
-        i === groupIndex
-          ? { ...g, components: [...g.components, newComponent] }
-          : g
-      )
+      prev.map((g, i) => {
+        if (i !== groupIndex) return g;
+        
+        // Assign to column 0 by default
+        const newComponent = {
+          id: `component-${Date.now()}`,
+          label: `Component ${g.components.length + 1}`,
+          column: 0,
+        };
+        
+        return { ...g, components: [...g.components, newComponent] };
+      })
     );
   };
 
@@ -115,7 +136,6 @@ export default function Workbook() {
       )
     );
 
-    // Close dropdown if it was open
     const componentId = groups[groupIndex]?.components[componentIndex]?.id;
     if (openDropdownId === componentId) {
       setOpenDropdownId(null);
@@ -132,56 +152,66 @@ export default function Workbook() {
 
   const removeColumn = (groupIndex: number) => {
     setGroups((prev) =>
-      prev.map((g, i) =>
-        i === groupIndex && (g.columns || 1) > 1
-          ? { ...g, columns: (g.columns || 1) - 1 }
-          : g
-      )
+      prev.map((g, i) => {
+        if (i !== groupIndex || (g.columns || 1) <= 1) return g;
+        
+        const newColumns = (g.columns || 1) - 1;
+        // Move any components in the removed column to the last remaining column
+        const updatedComponents = g.components.map(c => ({
+          ...c,
+          column: (c.column || 0) >= newColumns ? newColumns - 1 : (c.column || 0)
+        }));
+        
+        return { ...g, columns: newColumns, components: updatedComponents };
+      })
     );
   };
 
-  const moveComponentLeft = (groupIndex: number, componentIndex: number) => {
-    const group = groups[groupIndex];
-    const columns = group.columns || 1;
-    const column = componentIndex % columns;
-
-    if (column === 0) return;
-
-    const newComponents = [...group.components];
-    [newComponents[componentIndex], newComponents[componentIndex - 1]] = [
-      newComponents[componentIndex - 1],
-      newComponents[componentIndex],
-    ];
-
+  // Move to Previous Column - changes the component's column property
+  const moveToPrevColumn = (groupIndex: number, componentIndex: number) => {
     setGroups((prev) =>
-      prev.map((g, i) =>
-        i === groupIndex ? { ...g, components: newComponents } : g
-      )
+      prev.map((g, i) => {
+        if (i !== groupIndex) return g;
+        
+        const columns = g.columns || 1;
+        const component = g.components[componentIndex];
+        // If column is undefined, calculate it from the index position
+        const currentCol = component.column ?? (componentIndex % columns);
+        
+        // Can't move if already in first column
+        if (currentCol === 0) return g;
+        
+        return {
+          ...g,
+          components: g.components.map((c, ci) =>
+            ci === componentIndex ? { ...c, column: currentCol - 1 } : c
+          ),
+        };
+      })
     );
   };
 
-  const moveComponentRight = (groupIndex: number, componentIndex: number) => {
-    const group = groups[groupIndex];
-    const columns = group.columns || 1;
-    const column = componentIndex % columns;
-    const total = group.components.length;
-
-    if (column === columns - 1 || componentIndex + 1 >= total) return;
-
-    const nextRow = Math.floor((componentIndex + 1) / columns);
-    const currentRow = Math.floor(componentIndex / columns);
-    if (nextRow !== currentRow) return;
-
-    const newComponents = [...group.components];
-    [newComponents[componentIndex], newComponents[componentIndex + 1]] = [
-      newComponents[componentIndex + 1],
-      newComponents[componentIndex],
-    ];
-
+  // Move to Next Column - changes the component's column property
+  const moveToNextColumn = (groupIndex: number, componentIndex: number) => {
     setGroups((prev) =>
-      prev.map((g, i) =>
-        i === groupIndex ? { ...g, components: newComponents } : g
-      )
+      prev.map((g, i) => {
+        if (i !== groupIndex) return g;
+        
+        const columns = g.columns || 1;
+        const component = g.components[componentIndex];
+        // If column is undefined, calculate it from the index position
+        const currentCol = component.column ?? (componentIndex % columns);
+        
+        // Can't move if already in last column
+        if (currentCol >= columns - 1) return g;
+        
+        return {
+          ...g,
+          components: g.components.map((c, ci) =>
+            ci === componentIndex ? { ...c, column: currentCol + 1 } : c
+          ),
+        };
+      })
     );
   };
 
@@ -217,7 +247,7 @@ export default function Workbook() {
       )}
 
       <ContextMenu
-        ref={contextMenuRef}  // ← This connects the ref
+        ref={contextMenuRef}
         position={contextMenu}
         groups={groups}
         onCreateGroup={createNewGroup}
@@ -226,8 +256,8 @@ export default function Workbook() {
         onDestroyDropdown={destroyDropdown}
         onAddColumn={addColumn}
         onRemoveColumn={removeColumn}
-        onMoveLeft={moveComponentLeft}
-        onMoveRight={moveComponentRight}
+        onMoveToPrevColumn={moveToPrevColumn}
+        onMoveToNextColumn={moveToNextColumn}
         onClose={closeContextMenu}
       />
 
