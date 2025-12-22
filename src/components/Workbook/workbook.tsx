@@ -1,7 +1,7 @@
 // src/components/Workbook/Workbook.tsx
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import SpreadsheetGrid from "./SpreadsheetGrid";
 import RibbonTabs from "./RibbonTabs";
 import RibbonGroup from "./RibbonGroup";
@@ -23,6 +23,28 @@ export default function Workbook() {
     string | null
   >(null);
   const [editValue, setEditValue] = useState<string>("");
+
+  // Ref for the context menu element
+  const contextMenuRef = useRef<HTMLDivElement>(null);
+
+  // Close context menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        contextMenuRef.current &&
+        !contextMenuRef.current.contains(event.target as Node)
+      ) {
+        setContextMenu(null);
+      }
+    };
+
+    if (contextMenu) {
+      document.addEventListener("mousedown", handleClickOutside);
+      return () => {
+        document.removeEventListener("mousedown", handleClickOutside);
+      };
+    }
+  }, [contextMenu]);
 
   const handleContextMenu = (
     e: React.MouseEvent,
@@ -123,7 +145,7 @@ export default function Workbook() {
     const columns = group.columns || 1;
     const column = componentIndex % columns;
 
-    if (column === 0) return; // already leftmost
+    if (column === 0) return;
 
     const newComponents = [...group.components];
     [newComponents[componentIndex], newComponents[componentIndex - 1]] = [
@@ -148,7 +170,7 @@ export default function Workbook() {
 
     const nextRow = Math.floor((componentIndex + 1) / columns);
     const currentRow = Math.floor(componentIndex / columns);
-    if (nextRow !== currentRow) return; // can't cross rows
+    if (nextRow !== currentRow) return;
 
     const newComponents = [...group.components];
     [newComponents[componentIndex], newComponents[componentIndex + 1]] = [
@@ -170,7 +192,7 @@ export default function Workbook() {
       {selectedTab === "Home" && (
         <div
           className="bg-[#292929] h-32 border-b-2 border-[#292929] px-4 py-3 overflow-hidden"
-          onContextMenu={(e) => handleContextMenu(e)} // empty area
+          onContextMenu={(e) => handleContextMenu(e)}
         >
           <div className="flex gap-6 h-full items-stretch">
             {groups.map((group, index) => (
@@ -195,6 +217,7 @@ export default function Workbook() {
       )}
 
       <ContextMenu
+        ref={contextMenuRef}  // ← This connects the ref
         position={contextMenu}
         groups={groups}
         onCreateGroup={createNewGroup}
