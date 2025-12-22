@@ -17,6 +17,7 @@ interface RibbonGroup {
   id: string;
   label: string;
   components: RibbonComponent[];
+  columns?: number;
 }
 
 interface ContextMenuPosition {
@@ -139,7 +140,8 @@ export default function Workbook() {
     const newGroup: RibbonGroup = {
       id: `group-${Date.now()}`,
       label: `Group ${groups.length + 1}`,
-      components: []
+      components: [],
+      columns: 1
     };
     if (insertAfterIndex !== undefined) {
       const updatedGroups = [...groups];
@@ -216,6 +218,93 @@ export default function Workbook() {
     setContextMenu(null);
   };
 
+  const addColumn = (groupIndex: number) => {
+    const updatedGroups = [...groups];
+    const currentGroup = updatedGroups[groupIndex];
+    const currentColumns = currentGroup.columns || 1;
+    
+    updatedGroups[groupIndex] = {
+      ...currentGroup,
+      columns: currentColumns + 1
+    };
+    setGroups(updatedGroups);
+    setContextMenu(null);
+  };
+
+  const removeColumn = (groupIndex: number) => {
+    const updatedGroups = [...groups];
+    const currentGroup = updatedGroups[groupIndex];
+    const currentColumns = currentGroup.columns || 1;
+    
+    if (currentColumns > 1) {
+      updatedGroups[groupIndex] = {
+        ...currentGroup,
+        columns: currentColumns - 1
+      };
+      setGroups(updatedGroups);
+    }
+    setContextMenu(null);
+  };
+
+  const moveComponentLeft = (groupIndex: number, componentIndex: number) => {
+    const updatedGroups = [...groups];
+    const currentGroup = updatedGroups[groupIndex];
+    const columns = currentGroup.columns || 1;
+    const column = componentIndex % columns;
+    
+    // Can't move left if already in first column
+    if (column === 0) {
+      setContextMenu(null);
+      return;
+    }
+    
+    // Swap with component to the left
+    const targetIndex = componentIndex - 1;
+    const components = [...currentGroup.components];
+    [components[componentIndex], components[targetIndex]] = [components[targetIndex], components[componentIndex]];
+    
+    updatedGroups[groupIndex] = {
+      ...currentGroup,
+      components
+    };
+    setGroups(updatedGroups);
+    setContextMenu(null);
+  };
+
+  const moveComponentRight = (groupIndex: number, componentIndex: number) => {
+    const updatedGroups = [...groups];
+    const currentGroup = updatedGroups[groupIndex];
+    const columns = currentGroup.columns || 1;
+    const column = componentIndex % columns;
+    const totalComponents = currentGroup.components.length;
+    
+    // Can't move right if already in last column or if next position is out of bounds
+    if (column === columns - 1 || componentIndex + 1 >= totalComponents) {
+      setContextMenu(null);
+      return;
+    }
+    
+    // Check if the next position is in the same row
+    const nextRow = Math.floor((componentIndex + 1) / columns);
+    const currentRow = Math.floor(componentIndex / columns);
+    if (nextRow !== currentRow) {
+      setContextMenu(null);
+      return;
+    }
+    
+    // Swap with component to the right
+    const targetIndex = componentIndex + 1;
+    const components = [...currentGroup.components];
+    [components[componentIndex], components[targetIndex]] = [components[targetIndex], components[componentIndex]];
+    
+    updatedGroups[groupIndex] = {
+      ...currentGroup,
+      components
+    };
+    setGroups(updatedGroups);
+    setContextMenu(null);
+  };
+
   return (
     <div className="min-h-screen bg-gray-200 flex flex-col overflow-hidden">
       {/* Simple Ribbon Placeholder – expand this into your custom MACROHARD Ribbon later */}
@@ -250,27 +339,30 @@ export default function Workbook() {
       {/* Ribbon panel - shown when Home is selected */}
       {selectedTab === 'Home' && (
         <div 
-          className="bg-[#292929] min-h-32 border-b-2 border-[#292929] px-4 py-3"
+          className="bg-[#292929] h-32 border-b-2 border-[#292929] px-4 py-3 overflow-hidden"
           onContextMenu={(e) => {
             handleContextMenu(e);
           }}
         >
           {/* Display groups and components */}
-          <div className="flex gap-6">
+          <div className="flex gap-6 h-full items-stretch">
             {groups.map((group, groupIndex) => (
               <div 
                 key={group.id} 
-                className="bg-[#353535] border-l border-gray-600 pl-4 pr-4 py-2 rounded relative group"
+                className="bg-[#353535] border-l border-gray-600 pl-4 pr-4 py-2 rounded relative group h-full flex flex-col"
                 onContextMenu={(e) => {
                   e.stopPropagation();
                   handleContextMenu(e, groupIndex);
                 }}
               >
-                <div className="flex flex-col gap-2">
+                <div 
+                  className="grid gap-2 flex-1 auto-rows-fr"
+                  style={{ gridTemplateColumns: `repeat(${group.columns || 1}, minmax(0, 1fr))` }}
+                >
                   {group.components.map((component, compIndex) => (
-                    <div key={component.id} className="relative dropdown-container">
+                    <div key={component.id} className="relative dropdown-container flex">
                       <div
-                        className="px-3 py-2 bg-gray-600 hover:bg-gray-500 text-white text-sm rounded cursor-pointer transition-colors flex items-center justify-between"
+                        className="px-3 py-1.5 bg-gray-600 hover:bg-gray-500 text-white text-xs rounded cursor-pointer transition-colors flex items-center justify-between flex-1 min-h-0"
                         onContextMenu={(e) => {
                           e.stopPropagation();
                           handleContextMenu(e, groupIndex, compIndex);
@@ -305,7 +397,7 @@ export default function Workbook() {
                               }
                             }}
                             autoFocus
-                            className="bg-gray-500 text-white text-sm rounded px-2 py-1 flex-1 outline-none border border-gray-400"
+                            className="bg-gray-500 text-white text-xs rounded px-2 py-1 flex-1 outline-none border border-gray-400"
                             onClick={(e) => e.stopPropagation()}
                           />
                         ) : (
@@ -443,14 +535,38 @@ export default function Workbook() {
           {contextMenu.groupIndex !== undefined && (
             <>
               {contextMenu.componentIndex === undefined && (
-                <button
-                  onClick={() => {
-                    createNewComponent(contextMenu.groupIndex!);
-                  }}
-                  className="w-full text-left px-4 py-2 text-white text-sm hover:bg-gray-600 transition-colors"
-                >
-                  Create New Component
-                </button>
+                <>
+                  <button
+                    onClick={() => {
+                      createNewComponent(contextMenu.groupIndex!);
+                    }}
+                    className="w-full text-left px-4 py-2 text-white text-sm hover:bg-gray-600 transition-colors"
+                  >
+                    Create New Component
+                  </button>
+                  {groups[contextMenu.groupIndex]?.components.length > 1 && (
+                    <>
+                      <button
+                        onClick={() => {
+                          addColumn(contextMenu.groupIndex!);
+                        }}
+                        className="w-full text-left px-4 py-2 text-white text-sm hover:bg-gray-600 transition-colors border-t border-gray-600"
+                      >
+                        Add Column
+                      </button>
+                      {(groups[contextMenu.groupIndex]?.columns || 1) > 1 && (
+                        <button
+                          onClick={() => {
+                            removeColumn(contextMenu.groupIndex!);
+                          }}
+                          className="w-full text-left px-4 py-2 text-white text-sm hover:bg-gray-600 transition-colors border-t border-gray-600"
+                        >
+                          Remove Column
+                        </button>
+                      )}
+                    </>
+                  )}
+                </>
               )}
               {contextMenu.componentIndex !== undefined && (
                 <>
@@ -472,6 +588,46 @@ export default function Workbook() {
                     >
                       Destroy Dropdown
                     </button>
+                  )}
+                  {(groups[contextMenu.groupIndex]?.columns || 1) > 1 && groups[contextMenu.groupIndex]?.components.length > 1 && (
+                    <>
+                      {(() => {
+                        const group = groups[contextMenu.groupIndex!];
+                        const columns = group.columns || 1;
+                        const componentIndex = contextMenu.componentIndex!;
+                        const column = componentIndex % columns;
+                        const totalComponents = group.components.length;
+                        const currentRow = Math.floor(componentIndex / columns);
+                        const nextRow = Math.floor((componentIndex + 1) / columns);
+                        const canMoveRight = column < columns - 1 && componentIndex + 1 < totalComponents && nextRow === currentRow;
+                        const canMoveLeft = column > 0;
+                        
+                        return (
+                          <>
+                            {canMoveLeft && (
+                              <button
+                                onClick={() => {
+                                  moveComponentLeft(contextMenu.groupIndex!, contextMenu.componentIndex!);
+                                }}
+                                className="w-full text-left px-4 py-2 text-white text-sm hover:bg-gray-600 transition-colors border-t border-gray-600"
+                              >
+                                Move Left
+                              </button>
+                            )}
+                            {canMoveRight && (
+                              <button
+                                onClick={() => {
+                                  moveComponentRight(contextMenu.groupIndex!, contextMenu.componentIndex!);
+                                }}
+                                className="w-full text-left px-4 py-2 text-white text-sm hover:bg-gray-600 transition-colors border-t border-gray-600"
+                              >
+                                Move Right
+                              </button>
+                            )}
+                          </>
+                        );
+                      })()}
+                    </>
                   )}
                 </>
               )}
